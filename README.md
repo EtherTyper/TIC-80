@@ -218,3 +218,4 @@ You can find iOS/tvOS version here
 * Josh Goebel - [Twitter @dreamer3](https://twitter.com/dreamer3) [Github joshgoebel](https://github.com/joshgoebel)
 * Joshua Minor - [GitHub @jminor](https://github.com/jminor)
 * Jeremiasz Nelz - [Github @remi6397](https://github.com/remi6397) [WWW](https://nelz.pl)
+# * Eli Bradley (uncomment when you actually contribute something lol)
