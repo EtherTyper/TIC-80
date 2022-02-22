@@ -25,6 +25,8 @@
 #define COUNT_OF(x)         ((sizeof(x)/sizeof(0[x])) / ((size_t)(!(sizeof(x) % sizeof(0[x])))))
 #define MIN(a,b)            ((a) < (b) ? (a) : (b))
 #define MAX(a,b)            ((a) > (b) ? (a) : (b))
+#define MIN3(a,b,c)         MIN(MIN(a, b), c)
+#define MAX3(a,b,c)         MAX(MAX(a, b), c)
 #define CLAMP(v,a,b)        (MIN(MAX(v,a),b))
 #define SWAP(a, b, type)    do { type temp = a; a = b; b = temp; } while (0)
 #define ZEROMEM(p)          memset(&p, 0, sizeof p)
@@ -35,9 +37,10 @@
 #define CONCAT2(a, b)       a ## b
 #define CONCAT(a, b)        CONCAT2(a, b)
 #define MACROVAR(name)      CONCAT(name, __LINE__)
-#define SCOPE(exp)          for(int MACROVAR(_i_) = 0; !MACROVAR(_i_); ++MACROVAR(_i_), exp)
+#define SCOPE(...)          for(int MACROVAR(_i_) = 0; !MACROVAR(_i_); ++MACROVAR(_i_), __VA_ARGS__)
 #define FOR(type,it,list)   for(type it = list, *MACROVAR(_end_) = it + COUNT_OF(list); it != MACROVAR(_end_); ++it)
 #define RFOR(type,it,list)  for(type it = list + (COUNT_OF(list) - 1), *MACROVAR(_end_) = list; it >= MACROVAR(_end_); --it)
+#define NEW(o)              (o*)malloc(sizeof(o))
 #define FREE(ptr)           do { if(ptr) free(ptr); } while (0)
 
 #define BITSET(a,b)         ((a) | (1ULL<<(b)))
