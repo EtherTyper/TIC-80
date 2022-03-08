@@ -74,8 +74,8 @@ class TIC {\n\
     foreign static mset(cell_x, cell_y, index)\n\
     foreign static mget(cell_x, cell_y)\n\
     foreign static textri(x1, y1, x2, y2, x3, y3, u1, v1, u2, v2, u3, v3)\n\
-    foreign static textri(x1, y1, x2, y2, x3, y3, u1, v1, u2, v2, u3, v3, use_map)\n\
-    foreign static textri(x1, y1, x2, y2, x3, y3, u1, v1, u2, v2, u3, v3, use_map, alpha_color)\n\
+    foreign static textri(x1, y1, x2, y2, x3, y3, u1, v1, u2, v2, u3, v3, src)\n\
+    foreign static textri(x1, y1, x2, y2, x3, y3, u1, v1, u2, v2, u3, v3, src, alpha_color)\n\
     foreign static pix(x, y)\n\
     foreign static pix(x, y, color)\n\
     foreign static line(x0, y0, x1, y1, color)\n\
@@ -263,7 +263,7 @@ static void wren_mgeti(WrenVM* vm)
     }
 
     tic_mem* tic = (tic_mem*)getWrenCore(vm);
-    wrenSetSlotDouble(vm, 0, *(tic->ram.map.data + index));
+    wrenSetSlotDouble(vm, 0, *(tic->ram->map.data + index));
 }
 
 static void wren_spritesize(WrenVM* vm)
@@ -383,7 +383,7 @@ static void wren_mouse(WrenVM* vm)
 {
     tic_core* core = getWrenCore(vm);
 
-    const tic80_mouse* mouse = &core->memory.ram.input.mouse;
+    const tic80_mouse* mouse = &core->memory.ram->input.mouse;
 
     wrenEnsureSlots(vm, 6);
     wrenSetSlotNewList(vm, 0);
@@ -498,7 +498,7 @@ static void wren_font(WrenVM* vm)
             return;
         }
 
-        s32 size = tic_api_font(tic, text ? text : "null", x, y, chromakey, width, height, fixed, scale, alt);
+        s32 size = tic_api_font(tic, text ? text : "null", x, y, &chromakey, 1, width, height, fixed, scale, alt);
         wrenSetSlotDouble(vm, 0, size);
     }
 }
@@ -741,12 +741,12 @@ static void wren_textri(WrenVM* vm)
     tic_mem* tic = (tic_mem*)getWrenCore(vm);
     static u8 colors[TIC_PALETTE_SIZE];
     s32 count = 0;
-    bool use_map = false;
+    tic_texture_src src = tic_tiles_texture;
 
-    //  check for use map 
+    //  check for texture source
     if (top > 13)
     {
-        use_map = wrenGetSlotBool(vm, 13);
+        src = getWrenNumber(vm, 13);
     }
 
     //  check for chroma 
@@ -775,13 +775,13 @@ static void wren_textri(WrenVM* vm)
     }
 
     tic_api_textri(tic, pt[0], pt[1],   //  xy 1
-                                pt[2], pt[3],   //  xy 2
-                                pt[4], pt[5],   //  xy 3
-                                pt[6], pt[7],   //  uv 1
-                                pt[8], pt[9],   //  uv 2
-                                pt[10], pt[11], //  uv 3
-                                use_map,        // use map
-                                colors, count);        // chroma
+                        pt[2], pt[3],   //  xy 2
+                        pt[4], pt[5],   //  xy 3
+                        pt[6], pt[7],   //  uv 1
+                        pt[8], pt[9],   //  uv 2
+                        pt[10], pt[11], //  uv 3
+                        src,            // texture source
+                        colors, count); // chroma
 }
 
 static void wren_pix(WrenVM* vm)
@@ -1099,7 +1099,7 @@ static void wren_sfx(WrenVM* vm)
 
         if (index >= 0)
         {
-            tic_sample* effect = tic->ram.sfx.samples.data + index;
+            tic_sample* effect = tic->ram->sfx.samples.data + index;
 
             note = effect->note;
             octave = effect->octave;

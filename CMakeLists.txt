@@ -86,6 +86,10 @@ if(NOT BUILD_SDL)
     set(BUILD_SDLGPU OFF)
 endif()
 
+if(NOT N3DS AND NOT EMSCRIPTEN AND NOT BAREMETALPI)
+    set(USE_LIBUV TRUE)
+endif()
+
 message("BUILD_SDLGPU: ${BUILD_SDLGPU}")
 message("BUILD_TOUCH_INPUT: ${BUILD_TOUCH_INPUT}")
 message("BUILD_STUB: ${BUILD_STUB}")
@@ -98,6 +102,8 @@ if (BAREMETALPI)
     set(BUILD_SDL OFF)
     set(BUILD_DEMO_CARTS OFF)
 endif()
+
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Dd_m3LogOutput=0")
 
 if(UNIX AND NOT APPLE AND NOT EMSCRIPTEN AND NOT ANDROID AND NOT N3DS)
     set(LINUX TRUE)
@@ -307,6 +313,30 @@ if(BUILD_WITH_MRUBY)
 endif()
 
 ################################
+# WASM
+################################
+
+set(WASM_DIR ${THIRDPARTY_DIR}/wasm3/source)
+set(WASM_SRC 
+    ${WASM_DIR}/m3_bind.c
+    ${WASM_DIR}/m3_code.c
+    ${WASM_DIR}/m3_compile.c
+    ${WASM_DIR}/m3_core.c
+    ${WASM_DIR}/m3_parse.c
+    ${WASM_DIR}/m3_env.c
+    ${WASM_DIR}/m3_exec.c
+    ${WASM_DIR}/m3_function.c
+    ${WASM_DIR}/m3_info.c
+    ${WASM_DIR}/m3_module.c
+)
+
+add_library(wasm STATIC ${WASM_SRC})
+target_include_directories(wasm PUBLIC ${THIRDPARTY_DIR}/wasm3/source)
+#target_include_directories(wasm PRIVATE ${THIRDPARTY_DIR}/wasm3/src/optional)
+#target_include_directories(wasm PRIVATE ${THIRDPARTY_DIR}/wasm3/src/vm)
+
+
+################################
 # SQUIRREL
 ################################
 
@@ -387,10 +417,11 @@ macro(MACRO_CORE SCRIPT DEFINE BUILD_DEPRECATED)
         ${TIC80CORE_DIR}/core/io.c
         ${TIC80CORE_DIR}/core/sound.c
         ${TIC80CORE_DIR}/api/js.c
-        ${TIC80CORE_DIR}/api/lua.c
-        ${TIC80CORE_DIR}/api/moonscript.c
-        ${TIC80CORE_DIR}/api/fennel.c
-        ${TIC80CORE_DIR}/api/wren.c
+        ${TIC80CORE_DIR}/api/lua.c 
+        ${TIC80CORE_DIR}/api/moonscript.c 
+        ${TIC80CORE_DIR}/api/fennel.c 
+        ${TIC80CORE_DIR}/api/wren.c 
+        ${TIC80CORE_DIR}/api/wasm.c
         ${TIC80CORE_DIR}/api/squirrel.c
         ${TIC80CORE_DIR}/api/mruby.c
         ${TIC80CORE_DIR}/tic.c
@@ -414,12 +445,13 @@ macro(MACRO_CORE SCRIPT DEFINE BUILD_DEPRECATED)
             ${CMAKE_SOURCE_DIR}/src)
 
     target_link_libraries(tic80core${SCRIPT}
-        lua
-        lpeg
-        wren
-        squirrel
-        duktape
-        blipbuf
+        lua 
+        lpeg 
+        wren 
+        wasm 
+        squirrel 
+        duktape 
+        blipbuf 
         zlib
     )
 
@@ -592,7 +624,7 @@ if(BUILD_LIBRETRO)
         set_target_properties(tic80_libretro PROPERTIES SUFFIX "_partial.a")
         add_custom_command(TARGET tic80_libretro
                POST_BUILD
-                   COMMAND ${CMAKE_SOURCE_DIR}/build/libretro/merge_static.sh $(AR) ${CMAKE_BINARY_DIR}/lib/tic80_libretro${LIBRETRO_SUFFIX}.${LIBRETRO_EXTENSION} ${CMAKE_BINARY_DIR}/lib/tic80_libretro_partial.a ${CMAKE_BINARY_DIR}/lib/libtic80core.a ${CMAKE_BINARY_DIR}/lib/liblua.a ${CMAKE_BINARY_DIR}/lib/libblipbuf.a ${CMAKE_BINARY_DIR}/lib/libduktape.a ${CMAKE_BINARY_DIR}/lib/libwren.a ${CMAKE_BINARY_DIR}/lib/libsquirrel.a ${CMAKE_BINARY_DIR}/lib/libgiflib.a ${CMAKE_BINARY_DIR}/lib/liblpeg.a ${MRUBY_LIB})
+                   COMMAND ${CMAKE_SOURCE_DIR}/build/libretro/merge_static.sh $(AR) ${CMAKE_BINARY_DIR}/lib/tic80_libretro${LIBRETRO_SUFFIX}.${LIBRETRO_EXTENSION} ${CMAKE_BINARY_DIR}/lib/tic80_libretro_partial.a ${CMAKE_BINARY_DIR}/lib/libtic80core.a ${CMAKE_BINARY_DIR}/lib/liblua.a ${CMAKE_BINARY_DIR}/lib/libblipbuf.a ${CMAKE_BINARY_DIR}/lib/libduktape.a ${CMAKE_BINARY_DIR}/lib/libwren.a ${CMAKE_BINARY_DIR}/lib/libwasm.a ${CMAKE_BINARY_DIR}/lib/libsquirrel.a ${CMAKE_BINARY_DIR}/lib/libgiflib.a ${CMAKE_BINARY_DIR}/lib/liblpeg.a ${MRUBY_LIB})
     else()
         add_library(tic80_libretro SHARED
         ${LIBRETRO_SRC}
@@ -660,7 +692,7 @@ set(CMAKE_DISABLE_TESTING ON CACHE BOOL "" FORCE)
 add_subdirectory(${THIRDPARTY_DIR}/zip)
 
 ################################
-# bin2txt cart2prj prj2cart xplode
+# bin2txt cart2prj prj2cart xplode wasmp2cart
 ################################
 
 if(BUILD_DEMO_CARTS)
@@ -674,6 +706,10 @@ if(BUILD_DEMO_CARTS)
     add_executable(prj2cart ${TOOLS_DIR}/prj2cart.c ${CMAKE_SOURCE_DIR}/src/studio/project.c)
     target_include_directories(prj2cart PRIVATE ${CMAKE_SOURCE_DIR}/src ${CMAKE_SOURCE_DIR}/include)
     target_link_libraries(prj2cart tic80core)
+
+    add_executable(wasmp2cart ${TOOLS_DIR}/wasmp2cart.c ${CMAKE_SOURCE_DIR}/src/studio/project.c)
+    target_include_directories(wasmp2cart PRIVATE ${CMAKE_SOURCE_DIR}/src ${CMAKE_SOURCE_DIR}/include)
+    target_link_libraries(wasmp2cart tic80core)
 
     add_executable(bin2txt ${TOOLS_DIR}/bin2txt.c)
     target_link_libraries(bin2txt zlib)
@@ -713,6 +749,31 @@ if(BUILD_DEMO_CARTS)
         add_custom_command(OUTPUT ${OUTNAME}
             COMMAND ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/prj2cart ${CART_FILE} ${OUTPRJ} && ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/bin2txt ${OUTPRJ} ${OUTNAME} -z
             DEPENDS bin2txt prj2cart ${CART_FILE}
+    )
+
+    endforeach(CART_FILE)
+
+    # we need to build these separatly combining both the project
+    # and the external WASM binary chunk since projects do not
+    # include BINARY chunks 
+    
+    file(GLOB WASM_DEMOS
+        ${CMAKE_SOURCE_DIR}/demos/wasm/*.wasmp
+        ${CMAKE_SOURCE_DIR}/demos/bunny/wasmmark/*.wasmp
+    )
+
+    foreach(CART_FILE ${WASM_DEMOS})
+
+        get_filename_component(CART_NAME ${CART_FILE} NAME_WE)
+        get_filename_component(DIR ${CART_FILE} DIRECTORY)
+
+        set(OUTNAME ${CMAKE_SOURCE_DIR}/build/assets/${CART_NAME}.tic.dat)
+        set(WASM_BINARY ${DIR}/${CART_NAME}.wasm)
+        set(OUTPRJ ${CMAKE_SOURCE_DIR}/build/${CART_NAME}.tic)
+        list(APPEND DEMO_CARTS_OUT ${OUTNAME})
+        add_custom_command(OUTPUT ${OUTNAME}
+            COMMAND ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/wasmp2cart ${CART_FILE} ${OUTPRJ} --binary ${WASM_BINARY} && ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/bin2txt ${OUTPRJ} ${OUTNAME} -z
+            DEPENDS bin2txt wasmp2cart ${CART_FILE} ${WASM_BINARY}
         )
 
     endforeach(CART_FILE)
@@ -736,38 +797,6 @@ target_include_directories(wave_writer INTERFACE ${THIRDPARTY_DIR}/blip-buf)
 
 add_library(argparse STATIC ${THIRDPARTY_DIR}/argparse/argparse.c)
 target_include_directories(argparse INTERFACE ${THIRDPARTY_DIR}/argparse)
-
-################################
-# CURL
-################################
-
-if(NOT N3DS AND NOT EMSCRIPTEN AND NOT BAREMETALPI)
-    set(USE_CURL TRUE)
-endif()
-
-if (USE_CURL)
-
-    set(BUILD_SHARED_LIBS OFF CACHE BOOL "")
-
-    if(WIN32 AND NOT MINGW)
-        set(CURL_STATIC_CRT ON CACHE BOOL "")
-    endif()
-
-    set(CMAKE_USE_OPENSSL OFF CACHE BOOL "" )
-    set(CMAKE_USE_LIBSSH2 OFF CACHE BOOL "")
-    set(HTTP_ONLY ON CACHE BOOL "")
-    set(BUILD_CURL_EXE OFF CACHE BOOL "")
-    set(CURL_CA_BUNDLE "none" CACHE STRING "")
-    set(CURL_CA_PATH "none" CACHE STRING "")
-    set(CURL_DISABLE_TESTS ON CACHE BOOL "")
-
-    if(RPI)
-        set(CURL_ZLIB OFF CACHE BOOL "" )
-    endif()
-
-    add_subdirectory(${THIRDPARTY_DIR}/curl)
-
-endif()
 
 ################################
 # libuv
@@ -867,10 +896,6 @@ endif()
 target_include_directories(tic80studio PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 
 target_link_libraries(tic80studio tic80core zip wave_writer argparse giflib png)
-
-if(USE_CURL)
-    target_link_libraries(tic80studio libcurl)
-endif()
 
 if(USE_LIBUV)
     target_compile_definitions(tic80studio PRIVATE USE_LIBUV)

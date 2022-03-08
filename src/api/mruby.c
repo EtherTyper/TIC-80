@@ -300,13 +300,13 @@ static mrb_value mrb_trib(mrb_state* mrb, mrb_value self)
 static mrb_value mrb_textri(mrb_state* mrb, mrb_value self)
 {
     mrb_value chroma = mrb_fixnum_value(0xff);
-    mrb_bool use_map = false;
+    mrb_int src = tic_tiles_texture;
 
     mrb_float x1, y1, x2, y2, x3, y3, u1, v1, u2, v2, u3, v3;
-    mrb_int argc = mrb_get_args(mrb, "ffffffffffff|bo",
+    mrb_int argc = mrb_get_args(mrb, "ffffffffffff|io",
             &x1, &y1, &x2, &y2, &x3, &y3,
             &u1, &v1, &u2, &v2, &u3, &v3,
-            &use_map, &chroma);
+            &src, &chroma);
 
     mrb_int count;
     u8 *chromas;
@@ -332,7 +332,7 @@ static mrb_value mrb_textri(mrb_state* mrb, mrb_value self)
     tic_api_textri(memory,
                         x1, y1, x2, y2, x3, y3,
                         u1, v1, u2, v2, u3, v3,
-                        use_map, chromas, count);
+                        src, chromas, count);
 
     free(chromas);
 
@@ -402,11 +402,11 @@ static mrb_value mrb_btn(mrb_state* mrb, mrb_value self)
 
     if (argc == 0)
     {
-        return mrb_fixnum_value(machine->memory.ram.input.gamepads.data);
+        return mrb_fixnum_value(machine->memory.ram->input.gamepads.data);
     }
     else if (argc == 1)
     {
-        return mrb_bool_value(machine->memory.ram.input.gamepads.data & (1 << index));
+        return mrb_bool_value(machine->memory.ram->input.gamepads.data & (1 << index));
     }
     else
     {
@@ -675,7 +675,7 @@ static mrb_value mrb_sfx(mrb_state* mrb, mrb_value self)
     {
         if (index >= 0)
         {
-            tic_sample* effect = memory->ram.sfx.samples.data + index;
+            tic_sample* effect = memory->ram->sfx.samples.data + index;
 
             note = effect->note;
             octave = effect->octave;
@@ -868,7 +868,7 @@ static mrb_value mrb_font(mrb_state* mrb, mrb_value self)
 
     const char* text = mrb_value_to_cstr(mrb, text_obj);
 
-    s32 size = tic_api_font(memory, text, x, y, width, height, chromakey, scale, fixed, alt);
+    s32 size = tic_api_font(memory, text, x, y, (u8*)&chromakey, 1, width, height, scale, fixed, alt);
     return mrb_fixnum_value(size);
 }
 
@@ -961,7 +961,7 @@ static mrb_value mrb_mouse(mrb_state *mrb, mrb_value self)
 
     tic_core* machine = getMRubyMachine(mrb);
 
-    const tic80_mouse* mouse = &machine->memory.ram.input.mouse;
+    const tic80_mouse* mouse = &machine->memory.ram->input.mouse;
 
     mrb_value hash = mrb_hash_new(mrb);
 

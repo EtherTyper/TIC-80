@@ -483,14 +483,12 @@ static SQInteger squirrel_textri(HSQUIRRELVM vm)
         tic_mem* tic = (tic_mem*)getSquirrelCore(vm);
         static u8 colors[TIC_PALETTE_SIZE];
         s32 count = 0;
-        bool use_map = false;
+        tic_texture_src src = tic_tiles_texture;
 
-        //  check for use map 
+        //  check for texture source
         if (top >= 14)
         {
-            SQBool b = SQFalse;
-            sq_getbool(vm, 14, &b);
-            use_map = (b != SQFalse);
+            src = getSquirrelNumber(vm, 14);
         }
         //  check for chroma 
         if(OT_ARRAY == sq_gettype(vm, 15))
@@ -519,15 +517,15 @@ static SQInteger squirrel_textri(HSQUIRRELVM vm)
         }
 
         tic_api_textri(tic, pt[0], pt[1],   //  xy 1
-                                    pt[2], pt[3],   //  xy 2
-                                    pt[4], pt[5],   //  xy 3
-                                    pt[6], pt[7],   //  uv 1
-                                    pt[8], pt[9],   //  uv 2
-                                    pt[10], pt[11], //  uv 3
-                                    use_map,        // use map
-                                    colors, count);        // chroma
+                            pt[2], pt[3],   //  xy 2
+                            pt[4], pt[5],   //  xy 3
+                            pt[6], pt[7],   //  uv 1
+                            pt[8], pt[9],   //  uv 2
+                            pt[10], pt[11], //  uv 3
+                            src,            // texture source
+                            colors, count); // chroma
     }
-    else return sq_throwerror(vm, "invalid parameters, textri(x1,y1,x2,y2,x3,y3,u1,v1,u2,v2,u3,v3,[use_map=false],[chroma=off])\n");
+    else return sq_throwerror(vm, "invalid parameters, textri(x1,y1,x2,y2,x3,y3,u1,v1,u2,v2,u3,v3,[texsrc=0],[chroma=off])\n");
     return 0;
 }
 
@@ -953,7 +951,7 @@ static SQInteger squirrel_sfx(HSQUIRRELVM vm)
         {
             if (index >= 0)
             {
-                tic_sample* effect = tic->ram.sfx.samples.data + index;
+                tic_sample* effect = tic->ram->sfx.samples.data + index;
 
                 note = effect->note;
                 octave = effect->octave;
@@ -1261,7 +1259,7 @@ static SQInteger squirrel_font(HSQUIRRELVM vm)
             return 1;
         }
 
-        s32 size = tic_api_font(tic, text, x, y, chromakey, width, height, fixed, scale, alt);
+        s32 size = tic_api_font(tic, text, x, y, &chromakey, 1, width, height, fixed, scale, alt);
 
         sq_pushinteger(vm, size);
         return 1;
@@ -1414,7 +1412,7 @@ static SQInteger squirrel_mouse(HSQUIRRELVM vm)
 {
     tic_core* core = getSquirrelCore(vm);
 
-    const tic80_mouse* mouse = &core->memory.ram.input.mouse;
+    const tic80_mouse* mouse = &core->memory.ram->input.mouse;
 
     sq_newarray(vm, 0);
 

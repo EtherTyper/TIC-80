@@ -313,7 +313,7 @@ static duk_ret_t duk_sfx(duk_context* duk)
     {
         if(index >= 0)
         {
-            tic_sample* effect = tic->ram.sfx.samples.data + index;
+            tic_sample* effect = tic->ram->sfx.samples.data + index;
 
             note = effect->note;
             octave = effect->octave;
@@ -679,7 +679,7 @@ static duk_ret_t duk_font(duk_context* duk)
         return 1;
     }
 
-    s32 size = tic_api_font(tic, text, x, y, chromakey, width, height, fixed, scale, alt);
+    s32 size = tic_api_font(tic, text, x, y, &chromakey, 1, width, height, fixed, scale, alt);
 
     duk_push_int(duk, size);
 
@@ -690,7 +690,7 @@ static duk_ret_t duk_mouse(duk_context* duk)
 {
     tic_core* core = getDukCore(duk);
 
-    const tic80_mouse* mouse = &core->memory.ram.input.mouse;
+    const tic80_mouse* mouse = &core->memory.ram->input.mouse;
 
     duk_idx_t idx = duk_push_array(duk);
 
@@ -814,7 +814,7 @@ static duk_ret_t duk_textri(duk_context* duk)
     for (s32 i = 0; i < COUNT_OF(pt); i++)
         pt[i] = (float)duk_to_number(duk, i);
     tic_mem* tic = (tic_mem*)getDukCore(duk);
-    bool use_map = duk_opt_boolean(duk, 12, false);
+    tic_texture_src src = duk_to_int(duk, 12);
 
     static u8 colors[TIC_PALETTE_SIZE];
     s32 count = 0;
@@ -852,9 +852,9 @@ static duk_ret_t duk_textri(duk_context* duk)
                         pt[4], pt[5],   //  xy 3
                         pt[6], pt[7],   //  uv 1
                         pt[8], pt[9],   //  uv 2
-                        pt[10], pt[11],//  uv 3
-                        use_map, // usemap
-                        colors, count);    //  chroma
+                        pt[10], pt[11], //  uv 3
+                        src,            //  texture source
+                        colors, count); //  chroma
 
     return 0;
 }
